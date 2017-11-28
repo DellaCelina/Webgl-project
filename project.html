@@ -1,0 +1,38 @@
+<html>
+	<head>
+		<meta charset="utf-8"/>
+		<title>Project#1</title>
+	</head>
+
+	<body onload="main()">
+		<canvas id="webgl" width="1000" height="1000"></canvas>
+
+		<script src="../lib/webgl-utils.js"></script>
+		<script src="../lib/webgl-debug.js"></script>
+		<script src="../lib/cuon-utils.js"></script>
+		<script src="../lib/cuon-matrix.js"></script>
+		<script src="./project.js"></script>
+		<script id="vertex_shader" type="x-shader/x-vertex">
+			attribute vec4 a_Position;
+			uniform mat4 u_Matrix;
+			attribute vec2 a_Coord;
+			varying vec2 v_Coord;
+			void main(){
+					gl_Position = u_Matrix * a_Position;
+					v_Coord = a_Coord;
+			}
+		</script>
+		<script id="frag_shader" type="x-shader/x-fragment">
+			precision mediump float;
+			varying vec2 v_Coord;
+			uniform float u_Visuality;
+			void main(){
+					float theta = acos(v_Coord.x/length(v_Coord));
+					float r = cos(6.0 * theta) + 1.8;
+					if(length(v_Coord) < r/10.0)
+						gl_FragColor = vec4(1.0, 1.0, 1.0, u_Visuality);
+					else discard;
+			}
+		</script>
+	</body>
+</html>
