@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Proj3</title>
+  </head>
+
+  <body onload="main()">
+    <canvas id="webgl" width="400" height="400">
+    Please use a browser that supports "canvas"
+    </canvas>
+
+    <script id="vertex-shader" type="x-shader/x-vertex">
+        attribute vec4 a_Position;
+        attribute vec4 a_Normal;
+        attribute vec4 a_Color;
+        uniform mat4 u_MvMatrix;
+        uniform mat4 u_ModelMatrix;
+        uniform mat4 u_NormalMatrix;
+        varying vec4 v_Color;
+        varying vec3 v_Normal;
+        varying vec3 v_Position;
+        void main() {
+            gl_Position = u_MvMatrix * u_ModelMatrix * a_Position;
+            // Calculate the vertex position in the world coordinate
+            v_Position = vec3(u_ModelMatrix * a_Position);
+            v_Normal = normalize(vec3(u_NormalMatrix * a_Normal));
+            v_Color = a_Color;
+        }
+    </script>
+    <script id="fragment-shader" type="x-shader/x-fragment">
+        #ifdef GL_ES
+        precision mediump float;
+        #endif
+        #define LIGHT_CNT 2
+        struct Light{
+            vec3 diffuseColor;
+            vec3 specularColor;
+            vec3 position;
+            float cutoff;
+        };
+        struct Material{
+            float ambientConst;
+            float diffuseConst;
+            float specularConst;
+            float shininess;
+        };
+        uniform Material u_Material;
+        uniform Light u_Light[LIGHT_CNT];
+        uniform vec3 u_AmbientLight;
+
+        uniform vec3 u_ViewPosition;
+        varying vec3 v_Normal;
+        varying vec3 v_Position;
+        varying vec4 v_Color;
+        void main() {
+            vec3 NV = normalize(v_Normal);
+            // Light Vector
+            vec3 LV[2];
+            for(int i=0; i<LIGHT_CNT; i++)
+                LV[i] = normalize(u_Light[i].position - v_Position);
+            // View Vector
+            vec3 VV = normalize(u_ViewPosition - v_Position);
+            // Reflect Vector
+            vec3 RV[2];
+            for(int i=0; i<LIGHT_CNT; i++)
+                RV[i] = reflect(-LV[i], NV);
+
+            // Calculate light intensity
+            vec3 LightIntensity = u_Material.ambientConst * u_AmbientLight;
+            for(int i=0; i<LIGHT_CNT; i++){
+                if(dot(VV, RV[i]) > u_Light[i].cutoff)
+                    LightIntensity += u_Material.diffuseConst * max(dot(NV, LV[i]), 0.0) * u_Light[i].diffuseColor;
+            }
+            for(int i=0; i<LIGHT_CNT; i++){
+                if(dot(VV, RV[i]) > u_Light[i].cutoff)
+                    LightIntensity += u_Material.specularConst * pow(dot(VV, RV[i]), u_Material.shininess) * u_Light[i].specularColor;
+            }
+            gl_FragColor = vec4(LightIntensity * v_Color.rgb, v_Color.a);
+        }
+    </script>
+    <script src="../lib/webgl-utils.js"></script>
+    <script src="../lib/webgl-debug.js"></script>
+    <script src="../lib/cuon-utils.js"></script>
+    <script src="../lib/cuon-matrix.js"></script>
+    <script src="proj3.js"></script>
+  </body>
+</html>
