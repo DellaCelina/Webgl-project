@@ -60,11 +60,12 @@ function Shader(gl_context){
         this.gl.uniformMatrix4fv(this.u_NormalMatrix, false, normalMatrix.elements);
     }
 
-    this.SetLight= function (i, diffuseColor, specularColor, position, lookDirection, cutoff){
+    this.SetLight= function (i, diffuseColor, specularColor, position, lookDirection, cutoffAngle){
         this.gl.uniform3fv(this.u_diffuseColor[i], diffuseColor);
         this.gl.uniform3fv(this.u_specularColor[i], specularColor);
         this.gl.uniform3fv(this.u_position[i], position);
         this.gl.uniform3fv(this.u_lookDirection[i], lookDirection);
+        var cutoff = Math.cos(cutoffAngle * Math.PI / 180);
         this.gl.uniform1f(this.u_cutoff[i], cutoff);
     }
 
@@ -114,15 +115,15 @@ function main() {
     var specularColor = [1.0, 1.0, 1.0];
     var position = [0.0, 1.5, 1.5];
     var lookDirection = [0.0, -1.5, -1.5]
-    var cutoff = 0.0;
-    shader.SetLight(0, diffuseColor, specularColor, position, lookDirection, cutoff);
+    var cutoffAngle = 27;
+    shader.SetLight(0, diffuseColor, specularColor, position, lookDirection, cutoffAngle);
 
     var diffuseColor = [1.0, 1.0, 1.0];
     var specularColor = [1.0, 1.0, 1.0];
     var position = [0.0, 0.0, 1.5];
-    var lookDirection = [0.0, -1.0, -1.0]
-    var cutoff = 0.0;
-    shader.SetLight(1, diffuseColor, specularColor, position, lookDirection, cutoff);
+    var lookDirection = [0.0, 0.0, -1.0]
+    var cutoffAngle = 30;
+    shader.SetLight(1, diffuseColor, specularColor, position, lookDirection, cutoffAngle);
 
     // Set Material
     shader.SetMaterial(1.0, 0.9, 1.0, 10.0);

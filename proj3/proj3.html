@@ -84,7 +84,7 @@
             
             // Calculate Specular
             for(int i=0; i<LIGHT_CNT; i++){
-                if(dot(DV[i], LV[i]) > u_Light[i].cutoff)
+                if(dot(DV[i], LV[i]) >= u_Light[i].cutoff)
                     LightIntensity += u_Light[i].specularColor * u_Material.specularConst * pow(max(dot(VV, RV[i]), 0.0), u_Material.shininess);
             }
             
