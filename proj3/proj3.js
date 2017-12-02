@@ -1,50 +1,55 @@
 //proj3
 function Shader(gl_context){
     this.gl = gl_context;
-    // Get camera uniforms
-    this.u_MvMatrix = this.gl.getUniformLocation(this.gl.program, 'u_MvMatrix');
-    this.u_ViewPosition = this.gl.getUniformLocation(this.gl.program, 'u_ViewPosition');
-    if(!this.u_MvMatrix || !this.u_ViewPosition)
-        console.log('Failed camera');
+    this.InitShader = function (vertex, frag){
+        if (!initShaders(this.gl, vertex, frag)) 
+            console.log('Failed to intialize shaders.');
+        // Get camera uniforms
+        this.u_VPMatrix = this.gl.getUniformLocation(this.gl.program, 'u_VPMatrix');
+        this.u_ViewPosition = this.gl.getUniformLocation(this.gl.program, 'u_ViewPosition');
+        if(!this.u_VPMatrix || !this.u_ViewPosition)
+            console.log('Failed camera');
 
-    // Get model uniforms
-    this.u_ModelMatrix = this.gl.getUniformLocation(this.gl.program, 'u_ModelMatrix');
-    this.u_NormalMatrix = this.gl.getUniformLocation(this.gl.program, 'u_NormalMatrix');
-    if(!this.u_ModelMatrix || !this.u_NormalMatrix)
-        console.log('Failed Model');
+        // Get model uniforms
+        this.u_ModelMatrix = this.gl.getUniformLocation(this.gl.program, 'u_ModelMatrix');
+        this.u_NormalMatrix = this.gl.getUniformLocation(this.gl.program, 'u_NormalMatrix');
+        if(!this.u_ModelMatrix || !this.u_NormalMatrix)
+            console.log('Failed Model');
 
-    // Get light uniforms
-    this.u_diffuseColor = new Array(2);
-    this.u_specularColor= new Array(2);
-    this.u_position= new Array(2);
-    this.u_cutoff = new Array(2);
-    for(var i=0; i<2; i++){
-        this.u_diffuseColor[i] = this.gl.getUniformLocation(this.gl.program, 'u_Light[' + i + '].diffuseColor');
-        this.u_specularColor[i] = this.gl.getUniformLocation(this.gl.program, 'u_Light[' + i + '].specularColor');
-        this.u_position[i] = this.gl.getUniformLocation(this.gl.program, 'u_Light[' + i + '].position');
-        this.u_cutoff[i] = this.gl.getUniformLocation(this.gl.program, 'u_Light[' + i + '].cutoff');
-        if(!this.u_diffuseColor[i] || !this.u_specularColor[i] || !this.u_position[i] || !this.u_cutoff[i])
-            console.log('Failed light');
+        // Get light uniforms
+        this.u_diffuseColor = new Array(2);
+        this.u_specularColor= new Array(2);
+        this.u_position= new Array(2);
+        this.u_lookDirection = new Array(2);
+        this.u_cutoff = new Array(2);
+        for(var i=0; i<2; i++){
+            this.u_diffuseColor[i] = this.gl.getUniformLocation(this.gl.program, 'u_Light[' + i + '].diffuseColor');
+            this.u_specularColor[i] = this.gl.getUniformLocation(this.gl.program, 'u_Light[' + i + '].specularColor');
+            this.u_position[i] = this.gl.getUniformLocation(this.gl.program, 'u_Light[' + i + '].position');
+            this.u_lookDirection[i] = this.gl.getUniformLocation(this.gl.program, 'u_Light[' + i + '].lookDirection')
+            this.u_cutoff[i] = this.gl.getUniformLocation(this.gl.program, 'u_Light[' + i + '].cutoff');
+            if(!this.u_diffuseColor[i] || !this.u_specularColor[i] || !this.u_position[i] || !this.u_cutoff[i])
+                console.log('Failed light');
+        }
+
+        // Get material uniforms
+        this.u_ambientConst = this.gl.getUniformLocation(this.gl.program, 'u_Material.ambientConst');
+        this.u_diffuseConst = this.gl.getUniformLocation(this.gl.program, 'u_Material.diffuseConst');
+        this.u_specularConst = this.gl.getUniformLocation(this.gl.program, 'u_Material.specularConst');
+        this.u_shininess = this.gl.getUniformLocation(this.gl.program, 'u_Material.shininess');
+        if(!this.u_ambientConst || !this.u_diffuseConst || !this.u_specularConst || !this.u_shininess)
+            console.log('Failed material');
+
+        // Get ambient uniform
+        this.u_ambient = this.gl.getUniformLocation(this.gl.program, 'u_AmbientLight');
+        if(!this.u_ambient)
+            console.log('Failed ambient');
     }
 
-    // Get material uniforms
-    this.u_ambientConst = this.gl.getUniformLocation(this.gl.program, 'u_Material.ambientConst');
-    this.u_diffuseConst = this.gl.getUniformLocation(this.gl.program, 'u_Material.diffuseConst');
-    this.u_specularConst = this.gl.getUniformLocation(this.gl.program, 'u_Material.specularConst');
-    this.u_shininess = this.gl.getUniformLocation(this.gl.program, 'u_Material.shininess');
-    if(!this.u_ambientConst || !this.u_diffuseConst || !this.u_specularConst || !this.u_shininess)
-        console.log('Failed material');
-
-    // Get ambient uniform
-    this.u_ambient = this.gl.getUniformLocation(this.gl.program, 'u_AmbientLight');
-    if(!this.u_ambient)
-        console.log('Failed ambient');
-
     this.SetCamera = function (PMatrix, lookP, centerP, cameraUp){
-        var MvMatrix = PMatrix.lookAt(lookP[0], lookP[1], lookP[2], centerP[0], centerP[1], centerP[2], cameraUp[0], cameraUp[1], cameraUp[2]);
-        this.gl.uniformMatrix4fv(this.u_MvMatrix, false, MvMatrix.elements);
+        var VPMatrix = PMatrix.lookAt(lookP[0], lookP[1], lookP[2], centerP[0], centerP[1], centerP[2], cameraUp[0], cameraUp[1], cameraUp[2]);
+        this.gl.uniformMatrix4fv(this.u_VPMatrix, false, VPMatrix.elements);
         this.gl.uniform3f(this.u_ViewPosition, lookP[0] - centerP[0], lookP[1] - centerP[1], lookP[2] - centerP[2]);
-        console.log('Set Camera');
     }
 
     this.SetModel = function (ModelMatrix){
@@ -53,15 +58,14 @@ function Shader(gl_context){
         normalMatrix.setInverseOf(ModelMatrix);
         normalMatrix.transpose();
         this.gl.uniformMatrix4fv(this.u_NormalMatrix, false, normalMatrix.elements);
-        console.log('Set Model');
     }
 
-    this.SetLight= function (i, diffuseColor, specularColor, position, cutoff){
+    this.SetLight= function (i, diffuseColor, specularColor, position, lookDirection, cutoff){
         this.gl.uniform3fv(this.u_diffuseColor[i], diffuseColor);
         this.gl.uniform3fv(this.u_specularColor[i], specularColor);
         this.gl.uniform3fv(this.u_position[i], position);
+        this.gl.uniform3fv(this.u_lookDirection[i], lookDirection);
         this.gl.uniform1f(this.u_cutoff[i], cutoff);
-        console.log('Set Light' + i);
     }
 
     this.SetMaterial = function (ambientConst, diffuseConst, specularConst, shininess){
@@ -69,12 +73,10 @@ function Shader(gl_context){
         this.gl.uniform1f(this.u_diffuseConst, diffuseConst);
         this.gl.uniform1f(this.u_specularConst, specularConst);
         this.gl.uniform1f(this.u_shininess, shininess);
-        console.log('Set Matrerial');
     }
 
     this.SetAmbient = function (r, g, b){
         this.gl.uniform3f(this.u_ambient, r, g, b);
-        console.log('Set Ambient');
     }
 
 }
@@ -90,15 +92,11 @@ function main() {
     return;
     }
 
+    var shader = new Shader(gl);
     // Get shader code
     var vertex_src = document.getElementById('vertex-shader').text;
     var frag_src = document.getElementById('fragment-shader').text;
-
-    // Initialize shaders
-    if (!initShaders(gl, vertex_src, frag_src)) {
-        console.log('Failed to intialize shaders.');
-    return;
-    }
+    shader.InitShader(vertex_src, frag_src);
 
     var n = initVertexBuffers(gl);
     if (n < 0) {
@@ -110,20 +108,24 @@ function main() {
     gl.clearColor(0.0, 0.0, 0.0, 1.0);
     gl.enable(gl.DEPTH_TEST);
 
-    var shader = new Shader(gl);
+    // Set Lights
+    shader.SetAmbient(0.3, 0.3, 0.3);
+    var diffuseColor = [1.0, 1.0, 1.0];
+    var specularColor = [1.0, 1.0, 1.0];
+    var position = [0.0, 1.5, 1.5];
+    var lookDirection = [0.0, -1.5, -1.5]
+    var cutoff = 0.0;
+    shader.SetLight(0, diffuseColor, specularColor, position, lookDirection, cutoff);
 
-    // Set Light
-    shader.SetAmbient(0.2, 0.2, 0.2);
-    for(var i = 0; i<2; i++){
-        var diffuseColor = [1.0, 1.0, 1.0];
-        var specularColor = [1.0, 1.0, 1.0];
-        var position = [0.0, 3.0, 0.0];
-        var cutoff = 0.0;
-        shader.SetLight(i, diffuseColor, specularColor, position, cutoff);
-    }
+    var diffuseColor = [1.0, 1.0, 1.0];
+    var specularColor = [1.0, 1.0, 1.0];
+    var position = [0.0, 0.0, 1.5];
+    var lookDirection = [0.0, -1.0, -1.0]
+    var cutoff = 0.0;
+    shader.SetLight(1, diffuseColor, specularColor, position, lookDirection, cutoff);
 
     // Set Material
-    shader.SetMaterial(1.0, 1.0, 1.0, 10.0);
+    shader.SetMaterial(1.0, 0.9, 1.0, 10.0);
 
     // Set Camera
     var PMatrix = new Matrix4();
@@ -144,8 +146,7 @@ function main() {
 }
 
 function initVertexBuffers(gl) { // Create a sphere
-    var SPHERE_DIV = 13;
-
+    var SPHERE_DIV = 80;
     var i, ai, si, ci;
     var j, aj, sj, cj;
     var p1, p2;
@@ -190,6 +191,8 @@ function initVertexBuffers(gl) { // Create a sphere
     // In order to make it intelligible, another buffer is prepared separately
     if (!initArrayBuffer(gl, 'a_Position', new Float32Array(positions), gl.FLOAT, 3)) return -1;
     if (!initArrayBuffer(gl, 'a_Normal', new Float32Array(positions), gl.FLOAT, 3))  return -1;
+    var a_Color = gl.getAttribLocation(gl.program, 'a_Color');
+    gl.vertexAttrib4f(a_Color, 0.5, 0.3, 1.0, 1.0);
 
     // Unbind the buffer object
     gl.bindBuffer(gl.ARRAY_BUFFER, null);
