@@ -78,13 +78,13 @@
 
             // Calculate Diffuse
             for(int i=0; i<LIGHT_CNT; i++){
-                if(dot(DV[i], LV[i]) >= u_Light[i].cutoff)
+                if(dot(DV[i], LV[i]) >= u_Light[i].cutoff || u_Light[i].cutoff < 0)
                     LightIntensity += u_Light[i].diffuseColor * u_Material.diffuseConst * max(dot(NV, LV[i]), 0.0);
             }
             
             // Calculate Specular
             for(int i=0; i<LIGHT_CNT; i++){
-                if(dot(DV[i], LV[i]) >= u_Light[i].cutoff)
+                if(dot(DV[i], LV[i]) >= u_Light[i].cutoff || u_Light[i].cutoff < 0)
                     LightIntensity += u_Light[i].specularColor * u_Material.specularConst * pow(max(dot(VV, RV[i]), 0.0), u_Material.shininess);
             }
             
