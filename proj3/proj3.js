@@ -17,6 +17,8 @@ var ceilLight_specularColor = [1.0, 1.0, 1.0];
 var ceilLight_cutoff = 180;
 var ceilLight_position = [0.0, 0.9, 0.0];
 
+var ceilLamp_scale = [0.1, 0.1, 0.1];
+
 var wall_material = new Array(5);
 var wall_color = new Array(5);
 
@@ -569,6 +571,12 @@ function setWorld(gl, shader, buffer){
     light_model.setTranslate(ceilLight_position[0], ceilLight_position[1], ceilLight_position[2]);
     light_model.rotate(180, 1, 0, 0);
     ceil_light.set(gl, light_model, buffer);
+
+    var ceil_lamp = new Globe(80, [100, 1, 1, 10.0], [1.0, 1.0, 1.0]);
+    var lamp_model = new Matrix4();
+    lamp_model.setTranslate(ceilLight_position[0], ceilLight_position[1], ceilLight_position[2]);
+    lamp_model.scale(ceilLamp_scale[0], ceilLamp_scale[1], ceilLamp_scale[2]);
+    ceil_lamp.set(gl, lamp_model, buffer);
 
     var wall = new Array(5);
     for(var i = 0; i<5; i++)
