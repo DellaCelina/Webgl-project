@@ -230,13 +230,12 @@ function Box(material, color){
     this.material = material;
     this.modelMatrix;
     this.setFlag = false;
+    this.vbuffer;
+    this.nbuffer;
+    this.ibuffer;
+    this.iLength;
     this.set = function(gl, modelMatrix, buffer){
-        this.setFlag = true;
         this.modelMatrix = modelMatrix;
-        buffer.object.push(this);
-        return true;
-    }
-    this.draw = function(gl, shader){
         var vertices = new Float32Array([   // Vertex coordinates
             1.0, 1.0, 1.0,  -1.0, 1.0, 1.0,  -1.0,-1.0, 1.0,   1.0,-1.0, 1.0,  // v0-v1-v2-v3 front
             1.0, 1.0, 1.0,   1.0,-1.0, 1.0,   1.0,-1.0,-1.0,   1.0, 1.0,-1.0,  // v0-v3-v4-v5 right
@@ -264,34 +263,42 @@ function Box(material, color){
             20,21,22,  20,22,23     // back
         ]);
 
-        // Create a buffer object
-        var indexBuffer = gl.createBuffer();
-        if (!indexBuffer) 
-            return false;
+        this.vbuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.vbuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
 
-         var a_Position = initArrayBuffer(gl, 'a_Position', vertices, gl.FLOAT, 3);
-        if(a_Position == -1) {
-            console.log('Fail to draw box');
+        this.nbuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.nbuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, normals, gl.STATIC_DRAW);
+
+        this.ibuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.ibuffer);
+        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
+
+        this.iLength = indices.length;
+
+        this.setFlag = true;
+        buffer.object.push(this);
+        return true;
+    }
+    this.draw = function(gl, shader){
+        if(!this.setFlag){
+            console.log('Box is not set');
             return false;
         }
 
-        var a_Normal = initArrayBuffer(gl, 'a_Normal', normals, gl.FLOAT, 3);
-        if(a_Normal == -1) {
-            console.log('Fail to draw box');
-            return false;
-        }
-
+        var a_Position = initAttrib(gl, this.vbuffer, 'a_Position', gl.FLOAT, 3);
+        var a_Normal = initAttrib(gl, this.nbuffer, 'a_Normal', gl.FLOAT, 3);
         var a_Color = gl.getAttribLocation(gl.program, 'a_Color');
         gl.vertexAttrib3fv(a_Color, this.color);
-        // Write the indices to the buffer object
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
-        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
+        
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.ibuffer);
         
         shader.SetMaterial(this.material[0], this.material[1], this.material[2], this.material[3]);
         shader.SetModel(this.modelMatrix);
 
         // Draw Cube
-        gl.drawElements(gl.TRIANGLES, indices.length, gl.UNSIGNED_BYTE, 0);
+        gl.drawElements(gl.TRIANGLES, this.iLength, gl.UNSIGNED_BYTE, 0);
 
         // Deallocate vertex attribute
         gl.disableVertexAttribArray(a_Position);
@@ -616,18 +623,13 @@ function initArrayBuffer(gl, attribute, data, type, num) {
 }
 
 function initAttrib(gl, buffer, attribute, type, num){
-    // Write date into the buffer object
-    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-    gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
-    // Assign the buffer object to the attribute variable
     var a_attribute = gl.getAttribLocation(gl.program, attribute);
     if (a_attribute < 0) {
         console.log('Failed to get the storage location of ' + attribute);
         return -1;
     }
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
     gl.vertexAttribPointer(a_attribute, num, type, false, 0, 0);
-    // Enable the assignment of the buffer object to the attribute variable
     gl.enableVertexAttribArray(a_attribute);
-
     return a_attribute;
 }
