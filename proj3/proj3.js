@@ -330,13 +330,6 @@ function Wall(material, color){
         return true;
     }
     this.draw = function(gl, shader){
-        var vertexs = new Float32Array([
-            -1.0, 1.0, 0.0, 
-            1.0, 1.0, 0.0,
-            -1.0, -1.0, 0.0,
-            1.0, -1.0, 0.0
-        ]);
-
         var a_Position = initAttrib(gl, this.vbuffer, 'a_Position', gl.FLOAT, 3);
         var a_Color = gl.getAttribLocation(gl.program, 'a_Color');
         var a_Normal = gl.getAttribLocation(gl.program, 'a_Normal');
@@ -363,13 +356,17 @@ function Globe(div, material, color){
     this.material = material;
     this.modelMatrix;
     this.setFlag = false;
+
+    this.vertices = new Float32Array(div * 3);
+    this.indices = new Uint16Array(div * 6);
+
+    this.vbuffer;
+    this.nbuffer;
+    this.ibuffer;
+
     this.set = function(gl, modelMatrix, buffer){
-        this.setFlag = true;
         this.modelMatrix = modelMatrix;
-        buffer.object.push(this);
-        return true;
-    }
-    this.draw = function(gl, shader){
+
         var SPHERE_DIV = this.div;
         var i, ai, si, ci;
         var j, aj, sj, cj;
@@ -410,33 +407,43 @@ function Globe(div, material, color){
             }
         }
 
-        // Write the vertex property to buffers (coordinates and normals)
-        // Same data can be used for vertex and normal
-        // In order to make it intelligible, another buffer is prepared separately
-        var a_Position = initArrayBuffer(gl, 'a_Position', new Float32Array(positions), gl.FLOAT, 3);
-        if(a_Position == -1) return false;
-        var a_Normal = initArrayBuffer(gl, 'a_Normal', new Float32Array(positions), gl.FLOAT, 3);
-        if(a_Normal == -1)  return false;
+        this.vertices = new Float32Array(positions);
+        this.indices = new Uint16Array(indices);
+
+        this.vbuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.vbuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, this.vertices, gl.STATIC_DRAW);
+
+        this.nbuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.nbuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, this.vertices, gl.STATIC_DRAW);
+
+        this.ibuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.ibuffer);
+        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, this.indices, gl.STATIC_DRAW);
+
+        this.setFlag = true;
+        buffer.object.push(this);
+        return true;
+    }
+    this.draw = function(gl, shader){
+        if(!this.setFlag){
+            console.log('Globe is not set');
+            return false;
+        }
+
+        var a_Position = initAttrib(gl, this.vbuffer, 'a_Position', gl.FLOAT, 3);
+        var a_Normal = initAttrib(gl, this.nbuffer, 'a_Normal', gl.FLOAT, 3);
         var a_Color = gl.getAttribLocation(gl.program, 'a_Color');
         gl.vertexAttrib3fv(a_Color, this.color);
 
-        // Unbind the buffer object
-        gl.bindBuffer(gl.ARRAY_BUFFER, null);
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.ibuffer);
 
-        // Write the indices to the buffer object
-        var indexBuffer = gl.createBuffer();
-        if (!indexBuffer) {
-            console.log('Failed to create the buffer object');
-            return -1;
-        }
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
-        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
-        
         shader.SetMaterial(this.material[0], this.material[1], this.material[2], this.material[3]);
         shader.SetModel(this.modelMatrix);
 
         // Draw the cube
-        gl.drawElements(gl.TRIANGLES, indices.length, gl.UNSIGNED_SHORT, 0);
+        gl.drawElements(gl.TRIANGLES, this.indices.length, gl.UNSIGNED_SHORT, 0);
 
         gl.disableVertexAttribArray(a_Position);
         gl.disableVertexAttribArray(a_Normal);
