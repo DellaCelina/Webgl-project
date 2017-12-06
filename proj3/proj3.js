@@ -230,52 +230,48 @@ function Box(material, color){
     this.material = material;
     this.modelMatrix;
     this.setFlag = false;
+
+    this.vertices = new Float32Array([   // Vertex coordinates
+        1.0, 1.0, 1.0,  -1.0, 1.0, 1.0,  -1.0,-1.0, 1.0,   1.0,-1.0, 1.0,  // v0-v1-v2-v3 front
+        1.0, 1.0, 1.0,   1.0,-1.0, 1.0,   1.0,-1.0,-1.0,   1.0, 1.0,-1.0,  // v0-v3-v4-v5 right
+        1.0, 1.0, 1.0,   1.0, 1.0,-1.0,  -1.0, 1.0,-1.0,  -1.0, 1.0, 1.0,  // v0-v5-v6-v1 up
+        -1.0, 1.0, 1.0,  -1.0, 1.0,-1.0,  -1.0,-1.0,-1.0,  -1.0,-1.0, 1.0,  // v1-v6-v7-v2 left
+        -1.0,-1.0,-1.0,   1.0,-1.0,-1.0,   1.0,-1.0, 1.0,  -1.0,-1.0, 1.0,  // v7-v4-v3-v2 down
+        1.0,-1.0,-1.0,  -1.0,-1.0,-1.0,  -1.0, 1.0,-1.0,   1.0, 1.0,-1.0   // v4-v7-v6-v5 back
+    ]);
+    this.normals = new Float32Array([     
+        0.0, 0.0, 1.0,  0.0, 0.0, 1.0,  0.0, 0.0, 1.0,  0.0, 0.0, 1.0,  // v0-v1-v2-v3 front(blue)
+        1.0, 0.0, 0.0,  1.0, 0.0, 0.0,  1.0, 0.0, 0.0,  1.0, 0.0, 0.0,  // v0-v3-v4-v5 right(green)
+        0.0, 0.1, 0.0,  0.0, 1.0, 0.0,  0.0, 1.0, 0.0,  0.0, 1.0, 0.0,  // v0-v5-v6-v1 up(red)
+        -1.0, 0.0, 0.0,  -1.0, 0.0, 0.0,  -1.0, 0.0, 0.0,  -1.0, 0.0, 0.0,  // v1-v6-v7-v2 left
+        0.0, -1.0, 0.0,  0.0, -1.0, 0.0,  0.0, -1.0, 0.0,  0.0, -1.0, 0.0,  // v7-v4-v3-v2 down
+        0.0, 0.0, -1.0,  0.0, 0.0, -1.0,  0.0, 0.0, -1.0,  0.0, 0.0, -1.0   // v4-v7-v6-v5 back
+    ]);
+
+    this.indices = new Uint8Array([       // Indices of the vertices
+        0, 1, 2,   0, 2, 3,    // front
+        4, 5, 6,   4, 6, 7,    // right
+        8, 9,10,   8,10,11,    // up
+        12,13,14,  12,14,15,    // left
+        16,17,18,  16,18,19,    // down
+        20,21,22,  20,22,23     // back
+    ]);
     this.vbuffer;
     this.nbuffer;
     this.ibuffer;
-    this.iLength;
     this.set = function(gl, modelMatrix, buffer){
         this.modelMatrix = modelMatrix;
-        var vertices = new Float32Array([   // Vertex coordinates
-            1.0, 1.0, 1.0,  -1.0, 1.0, 1.0,  -1.0,-1.0, 1.0,   1.0,-1.0, 1.0,  // v0-v1-v2-v3 front
-            1.0, 1.0, 1.0,   1.0,-1.0, 1.0,   1.0,-1.0,-1.0,   1.0, 1.0,-1.0,  // v0-v3-v4-v5 right
-            1.0, 1.0, 1.0,   1.0, 1.0,-1.0,  -1.0, 1.0,-1.0,  -1.0, 1.0, 1.0,  // v0-v5-v6-v1 up
-            -1.0, 1.0, 1.0,  -1.0, 1.0,-1.0,  -1.0,-1.0,-1.0,  -1.0,-1.0, 1.0,  // v1-v6-v7-v2 left
-            -1.0,-1.0,-1.0,   1.0,-1.0,-1.0,   1.0,-1.0, 1.0,  -1.0,-1.0, 1.0,  // v7-v4-v3-v2 down
-            1.0,-1.0,-1.0,  -1.0,-1.0,-1.0,  -1.0, 1.0,-1.0,   1.0, 1.0,-1.0   // v4-v7-v6-v5 back
-        ]);
-
-        var normals = new Float32Array([     
-            0.0, 0.0, 1.0,  0.0, 0.0, 1.0,  0.0, 0.0, 1.0,  0.0, 0.0, 1.0,  // v0-v1-v2-v3 front(blue)
-            1.0, 0.0, 0.0,  1.0, 0.0, 0.0,  1.0, 0.0, 0.0,  1.0, 0.0, 0.0,  // v0-v3-v4-v5 right(green)
-            0.0, 0.1, 0.0,  0.0, 1.0, 0.0,  0.0, 1.0, 0.0,  0.0, 1.0, 0.0,  // v0-v5-v6-v1 up(red)
-            -1.0, 0.0, 0.0,  -1.0, 0.0, 0.0,  -1.0, 0.0, 0.0,  -1.0, 0.0, 0.0,  // v1-v6-v7-v2 left
-            0.0, -1.0, 0.0,  0.0, -1.0, 0.0,  0.0, -1.0, 0.0,  0.0, -1.0, 0.0,  // v7-v4-v3-v2 down
-            0.0, 0.0, -1.0,  0.0, 0.0, -1.0,  0.0, 0.0, -1.0,  0.0, 0.0, -1.0   // v4-v7-v6-v5 back
-        ]);
-
-        var indices = new Uint8Array([       // Indices of the vertices
-            0, 1, 2,   0, 2, 3,    // front
-            4, 5, 6,   4, 6, 7,    // right
-            8, 9,10,   8,10,11,    // up
-            12,13,14,  12,14,15,    // left
-            16,17,18,  16,18,19,    // down
-            20,21,22,  20,22,23     // back
-        ]);
-
         this.vbuffer = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, this.vbuffer);
-        gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+        gl.bufferData(gl.ARRAY_BUFFER, this.vertices, gl.STATIC_DRAW);
 
         this.nbuffer = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, this.nbuffer);
-        gl.bufferData(gl.ARRAY_BUFFER, normals, gl.STATIC_DRAW);
+        gl.bufferData(gl.ARRAY_BUFFER, this.normals, gl.STATIC_DRAW);
 
         this.ibuffer = gl.createBuffer();
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.ibuffer);
-        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
-
-        this.iLength = indices.length;
+        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, this.indices, gl.STATIC_DRAW);
 
         this.setFlag = true;
         buffer.object.push(this);
@@ -298,7 +294,7 @@ function Box(material, color){
         shader.SetModel(this.modelMatrix);
 
         // Draw Cube
-        gl.drawElements(gl.TRIANGLES, this.iLength, gl.UNSIGNED_BYTE, 0);
+        gl.drawElements(gl.TRIANGLES, this.indices.length, gl.UNSIGNED_BYTE, 0);
 
         // Deallocate vertex attribute
         gl.disableVertexAttribArray(a_Position);
@@ -314,9 +310,22 @@ function Wall(material, color){
     this.material = material;
     this.modelMatrix;
     this.setFlag = false;
+    
+    this.vertices = new Float32Array([
+        -1.0, 1.0, 0.0, 
+        1.0, 1.0, 0.0,
+        -1.0, -1.0, 0.0,
+        1.0, -1.0, 0.0
+    ]);
+    this.vbuffer;
     this.set = function(gl, modelMatrix, buffer){
-        this.setFlag = true;
         this.modelMatrix = modelMatrix;
+
+        this.vbuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.vbuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, this.vertices, gl.STATIC_DRAW);
+
+        this.setFlag = true;
         buffer.object.push(this);
         return true;
     }
@@ -328,15 +337,11 @@ function Wall(material, color){
             1.0, -1.0, 0.0
         ]);
 
-        var a_Position = initArrayBuffer(gl, 'a_Position', vertexs, gl.FLOAT, 3);
-        if(a_Position == -1) {
-            console.log('Fail to draw wall');
-            return false;
-        }
+        var a_Position = initAttrib(gl, this.vbuffer, 'a_Position', gl.FLOAT, 3);
         var a_Color = gl.getAttribLocation(gl.program, 'a_Color');
         var a_Normal = gl.getAttribLocation(gl.program, 'a_Normal');
 
-        gl.vertexAttrib3fv(a_Color, color);
+        gl.vertexAttrib3fv(a_Color, this.color);
         gl.vertexAttrib3fv(a_Normal, [0.0, 0.0, 1.0]);
 
         shader.SetMaterial(this.material[0], this.material[1], this.material[2], this.material[3]);
