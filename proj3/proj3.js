@@ -172,18 +172,18 @@ function HElement(toParent, drawableObj){
             mat.setTranslate(joint[0] * scale[0], joint[1] * scale[1], joint[2] * scale[2]);
         return mat;
     }
-    this.set= function(stack, buffer){
+    this.set= function(gl, stack, buffer){
         stack.setTop(stack.top()
         .multiply(this.rotate)
         .multiply(this.getTranslate(this.scale, this.toParent, -1)));
     
-        if(!this.Obj.set(stack.top()
+        if(!this.Obj.set(gl, stack.top()
         .scale(this.scale[0], this.scale[1], this.scale[2]), buffer))
         console.log('Fail to draw Obj');
 
         for(var i = 0; i<this.childCnt; i++){
             stack.push(stack.top().multiply(this.getTranslate(this.scale, this.childs[i].toChild, 1)));
-            this.childs[i].Child.set(stack, buffer);
+            this.childs[i].Child.set(gl, stack, buffer);
         }
         stack.pop();
         return true;
@@ -197,14 +197,11 @@ function Light(index, diffuseColor, specularColor, cutoff){
     this.cutoff = cutoff;
     this.modelMatrix;
     this.setFlag = false;
-    this.set = function(modelMatrix, buffer){
+    this.l_position;
+    this.l_direction;
+    this.set = function(gl, modelMatrix, buffer){
         this.setFlag = true;
         this.modelMatrix = modelMatrix;
-        buffer.light.push(this);
-        return true;
-    }
-    this.draw = function(gl, shader){
-        shader.SetMaterial([1.0, 1.0, 1.0]);
         var position = new Vector4([0.0, 0.0, 0.0, 1.0]);
         position = new Matrix4(this.modelMatrix).multiplyVector4(position);
         var look_position = new Vector4([0.0, 1.0, 0.0, 1.0]);
@@ -212,9 +209,18 @@ function Light(index, diffuseColor, specularColor, cutoff){
         for(var i=0; i<4; i++)
             look_position.elements[i] -= position.elements[i];
 
-        var l_position = [position.elements[0], position.elements[1], position.elements[2]];
-        var l_direction= [look_position.elements[0], look_position.elements[1], look_position.elements[2]];
-        shader.SetLight(this.index, this.diffuseColor, this.specularColor, l_position, l_direction, this.cutoff);
+        this.l_position = [position.elements[0], position.elements[1], position.elements[2]];
+        this.l_direction= [look_position.elements[0], look_position.elements[1], look_position.elements[2]];
+        buffer.light.push(this);
+        return true;
+    }
+    this.draw = function(gl, shader){
+        if(!this.setFlag) {
+            console.log('Light is not set');
+            return false;
+        }
+        shader.SetMaterial([1.0, 1.0, 1.0]);
+        shader.SetLight(this.index, this.diffuseColor, this.specularColor, this.l_position, this.l_direction, this.cutoff);
         return true;
     }
 }
@@ -224,7 +230,7 @@ function Box(material, color){
     this.material = material;
     this.modelMatrix;
     this.setFlag = false;
-    this.set = function(modelMatrix, buffer){
+    this.set = function(gl, modelMatrix, buffer){
         this.setFlag = true;
         this.modelMatrix = modelMatrix;
         buffer.object.push(this);
@@ -301,7 +307,7 @@ function Wall(material, color){
     this.material = material;
     this.modelMatrix;
     this.setFlag = false;
-    this.set = function(modelMatrix, buffer){
+    this.set = function(gl, modelMatrix, buffer){
         this.setFlag = true;
         this.modelMatrix = modelMatrix;
         buffer.object.push(this);
@@ -345,7 +351,7 @@ function Globe(div, material, color){
     this.material = material;
     this.modelMatrix;
     this.setFlag = false;
-    this.set = function(modelMatrix, buffer){
+    this.set = function(gl, modelMatrix, buffer){
         this.setFlag = true;
         this.modelMatrix = modelMatrix;
         buffer.object.push(this);
@@ -441,13 +447,13 @@ function HObject(root){
         push : function(data){this.topCnt++; this.setTop(data);},
         clear : function(){this.topCnt = 0;}
     };
-    this.set = function(modelMatrix, buffer){
+    this.set = function(gl, modelMatrix, buffer){
         this.setFlag = true;
         this.modelMatrix = modelMatrix;
         this.stack.clear();
         this.stack.setTop(this.modelMatrix);
         //this.root.setScale(0,0,0);
-        this.root.set(this.stack, buffer);
+        this.root.set(gl, this.stack, buffer);
         return true;
     }
 }
@@ -529,13 +535,13 @@ function drawScene(gl, shader, params){
     modelMatrix.setTranslate(params.x / 100, -1 + lampHeight, params.z / 100); // Rotate around the y-axis
     modelMatrix.scale(lampScale[0], lampScale[1], lampScale[2]);
 
-    setWorld(shader, buffer);
-    setLamp(modelMatrix, params, buffer);
+    setWorld(gl, shader, buffer);
+    setLamp(gl, modelMatrix, params, buffer);
 
     buffer.draw(gl, shader);
 }
 
-function setWorld(shader, buffer){
+function setWorld(gl, shader, buffer){
     // Set Lights
     shader.SetAmbient(ambientColor[0], ambientColor[1], ambientColor[2]);
 
@@ -543,7 +549,7 @@ function setWorld(shader, buffer){
     var light_model = new Matrix4();
     light_model.setTranslate(ceilLight_position[0], ceilLight_position[1], ceilLight_position[2]);
     light_model.rotate(180, 1, 0, 0);
-    ceil_light.set(light_model, buffer);
+    ceil_light.set(gl, light_model, buffer);
 
     var wall = new Array(5);
     for(var i = 0; i<5; i++)
@@ -559,11 +565,11 @@ function setWorld(shader, buffer){
     modelMatrix[4].setTranslate(0, -1, 0).rotate(-90, 1, 0, 0);
 
     for(var i = 0; i<5; i++){
-        wall[i].set(modelMatrix[i], buffer);
+        wall[i].set(gl, modelMatrix[i], buffer);
     }
 }
 
-function setLamp(modelMatrix, params, buffer){
+function setLamp(gl, modelMatrix, params, buffer){
     var root = new HElement([0.0, 0.0, 0.0], new Box(base_material, base_color));
     root.setScale(base_scale[0], base_scale[1], base_scale[2]);
     var lowerArm = new HElement([0.0, -1.0, 0.0], new Box(lowerArm_material, lowerArm_color));
@@ -583,7 +589,7 @@ function setLamp(modelMatrix, params, buffer){
 
     var obj = new HObject(root);
 
-    obj.set(modelMatrix, buffer);
+    obj.set(gl, modelMatrix, buffer);
 }
 
 function initArrayBuffer(gl, attribute, data, type, num) {
@@ -593,6 +599,23 @@ function initArrayBuffer(gl, attribute, data, type, num) {
         console.log('Failed to create the buffer object');
         return -1;
     }
+    // Write date into the buffer object
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
+    // Assign the buffer object to the attribute variable
+    var a_attribute = gl.getAttribLocation(gl.program, attribute);
+    if (a_attribute < 0) {
+        console.log('Failed to get the storage location of ' + attribute);
+        return -1;
+    }
+    gl.vertexAttribPointer(a_attribute, num, type, false, 0, 0);
+    // Enable the assignment of the buffer object to the attribute variable
+    gl.enableVertexAttribArray(a_attribute);
+
+    return a_attribute;
+}
+
+function initAttrib(gl, buffer, attribute, type, num){
     // Write date into the buffer object
     gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
     gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
