@@ -109,7 +109,6 @@ function Shader(gl_context){
     }
 
     this.SetLight= function (i, diffuseColor, specularColor, position, lookDirection, cutoffAngle){
-        console.log(i);
         this.gl.uniform3fv(this.u_diffuseColor[i], diffuseColor);
         this.gl.uniform3fv(this.u_specularColor[i], specularColor);
         this.gl.uniform3fv(this.u_position[i], position);
@@ -129,6 +128,19 @@ function Shader(gl_context){
         this.gl.uniform3f(this.u_ambient, r, g, b);
     }
 
+}
+
+function DrawBuffer(){
+    this.object = [];
+    this.light = [];
+    this.draw = function(gl, shader){
+        for(var i in this.light){
+            this.light[i].draw(gl, shader);
+        }
+        for(var i in this.object){
+            this.object[i].draw(gl, shader);
+        }
+    }
 }
 
 // When Call Draw with Stack that have matrix finished calibration,
@@ -160,20 +172,21 @@ function HElement(toParent, drawableObj){
             mat.setTranslate(joint[0] * scale[0], joint[1] * scale[1], joint[2] * scale[2]);
         return mat;
     }
-    this.draw = function(gl, shader, stack){
+    this.set= function(stack, buffer){
         stack.setTop(stack.top()
         .multiply(this.rotate)
         .multiply(this.getTranslate(this.scale, this.toParent, -1)));
     
-        if(!this.Obj.draw(gl, shader, stack.top()
-        .scale(this.scale[0], this.scale[1], this.scale[2])))
+        if(!this.Obj.set(stack.top()
+        .scale(this.scale[0], this.scale[1], this.scale[2]), buffer))
         console.log('Fail to draw Obj');
 
         for(var i = 0; i<this.childCnt; i++){
             stack.push(stack.top().multiply(this.getTranslate(this.scale, this.childs[i].toChild, 1)));
-            this.childs[i].Child.draw(gl, shader, stack);
+            this.childs[i].Child.set(stack, buffer);
         }
         stack.pop();
+        return true;
     }
 }
 
@@ -182,12 +195,20 @@ function Light(index, diffuseColor, specularColor, cutoff){
     this.diffuseColor = diffuseColor;
     this.specularColor = specularColor;
     this.cutoff = cutoff;
-    this.draw = function(gl, shader, modelMatrix){
+    this.modelMatrix;
+    this.setFlag = false;
+    this.set = function(modelMatrix, buffer){
+        this.setFlag = true;
+        this.modelMatrix = modelMatrix;
+        buffer.light.push(this);
+        return true;
+    }
+    this.draw = function(gl, shader){
         shader.SetMaterial([1.0, 1.0, 1.0]);
         var position = new Vector4([0.0, 0.0, 0.0, 1.0]);
-        position = new Matrix4(modelMatrix).multiplyVector4(position);
+        position = new Matrix4(this.modelMatrix).multiplyVector4(position);
         var look_position = new Vector4([0.0, 1.0, 0.0, 1.0]);
-        look_position = new Matrix4(modelMatrix).multiplyVector4(look_position);
+        look_position = new Matrix4(this.modelMatrix).multiplyVector4(look_position);
         for(var i=0; i<4; i++)
             look_position.elements[i] -= position.elements[i];
 
@@ -201,7 +222,15 @@ function Light(index, diffuseColor, specularColor, cutoff){
 function Box(material, color){
     this.color = color;
     this.material = material;
-    this.draw = function(gl, shader, modelMatrix){
+    this.modelMatrix;
+    this.setFlag = false;
+    this.set = function(modelMatrix, buffer){
+        this.setFlag = true;
+        this.modelMatrix = modelMatrix;
+        buffer.object.push(this);
+        return true;
+    }
+    this.draw = function(gl, shader){
         var vertices = new Float32Array([   // Vertex coordinates
             1.0, 1.0, 1.0,  -1.0, 1.0, 1.0,  -1.0,-1.0, 1.0,   1.0,-1.0, 1.0,  // v0-v1-v2-v3 front
             1.0, 1.0, 1.0,   1.0,-1.0, 1.0,   1.0,-1.0,-1.0,   1.0, 1.0,-1.0,  // v0-v3-v4-v5 right
@@ -253,7 +282,7 @@ function Box(material, color){
         gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
         
         shader.SetMaterial(this.material[0], this.material[1], this.material[2], this.material[3]);
-        shader.SetModel(modelMatrix);
+        shader.SetModel(this.modelMatrix);
 
         // Draw Cube
         gl.drawElements(gl.TRIANGLES, indices.length, gl.UNSIGNED_BYTE, 0);
@@ -270,7 +299,15 @@ function Box(material, color){
 function Wall(material, color){
     this.color = color;
     this.material = material;
-    this.draw = function(gl, shader, modelMatrix){
+    this.modelMatrix;
+    this.setFlag = false;
+    this.set = function(modelMatrix, buffer){
+        this.setFlag = true;
+        this.modelMatrix = modelMatrix;
+        buffer.object.push(this);
+        return true;
+    }
+    this.draw = function(gl, shader){
         var vertexs = new Float32Array([
             -1.0, 1.0, 0.0, 
             1.0, 1.0, 0.0,
@@ -290,7 +327,7 @@ function Wall(material, color){
         gl.vertexAttrib3fv(a_Normal, [0.0, 0.0, 1.0]);
 
         shader.SetMaterial(this.material[0], this.material[1], this.material[2], this.material[3]);
-        shader.SetModel(modelMatrix);
+        shader.SetModel(this.modelMatrix);
 
         gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
         
@@ -306,7 +343,15 @@ function Globe(div, material, color){
     this.div = div;
     this.color = color;
     this.material = material;
-    this.draw = function(gl, shader, modelMatrix){
+    this.modelMatrix;
+    this.setFlag = false;
+    this.set = function(modelMatrix, buffer){
+        this.setFlag = true;
+        this.modelMatrix = modelMatrix;
+        buffer.object.push(this);
+        return true;
+    }
+    this.draw = function(gl, shader){
         var SPHERE_DIV = this.div;
         var i, ai, si, ci;
         var j, aj, sj, cj;
@@ -370,7 +415,7 @@ function Globe(div, material, color){
         gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
         
         shader.SetMaterial(this.material[0], this.material[1], this.material[2], this.material[3]);
-        shader.SetModel(modelMatrix);
+        shader.SetModel(this.modelMatrix);
 
         // Draw the cube
         gl.drawElements(gl.TRIANGLES, indices.length, gl.UNSIGNED_SHORT, 0);
@@ -385,6 +430,8 @@ function Globe(div, material, color){
 
 function HObject(root){
     this.root = root;
+    this.modelMatrix;
+    this.setFlag = false;
     this.stack = {
         topCnt : 0,
         data : new Array(100),
@@ -394,11 +441,14 @@ function HObject(root){
         push : function(data){this.topCnt++; this.setTop(data);},
         clear : function(){this.topCnt = 0;}
     };
-    this.draw = function(gl, shader, modelMatrix){
+    this.set = function(modelMatrix, buffer){
+        this.setFlag = true;
+        this.modelMatrix = modelMatrix;
         this.stack.clear();
-        this.stack.setTop(modelMatrix);
+        this.stack.setTop(this.modelMatrix);
         //this.root.setScale(0,0,0);
-        this.root.draw(gl, shader, this.stack);
+        this.root.set(this.stack, buffer);
+        return true;
     }
 }
 
@@ -445,7 +495,6 @@ function main() {
     //Document values
     var params = new Parameters();
     setEvent(gl, shader, params);
-    console.log(params.cutoff);
 
     drawScene(gl, shader, params);
 }
@@ -473,16 +522,20 @@ function setParamsEvent(gl, shader, params, id){
 
 function drawScene(gl, shader, params){
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+    var buffer = new DrawBuffer();
     // Set Model
     var modelMatrix = new Matrix4();  // Model matrix
     modelMatrix.setTranslate(params.x / 100, -1 + lampHeight, params.z / 100); // Rotate around the y-axis
     modelMatrix.scale(lampScale[0], lampScale[1], lampScale[2]);
 
-    drawWorld(gl, shader);
-    drawLamp(gl, shader, modelMatrix, params);
+    setWorld(shader, buffer);
+    setLamp(modelMatrix, params, buffer);
+
+    buffer.draw(gl, shader);
 }
 
-function drawWorld(gl, shader){
+function setWorld(shader, buffer){
     // Set Lights
     shader.SetAmbient(ambientColor[0], ambientColor[1], ambientColor[2]);
 
@@ -490,7 +543,7 @@ function drawWorld(gl, shader){
     var light_model = new Matrix4();
     light_model.setTranslate(ceilLight_position[0], ceilLight_position[1], ceilLight_position[2]);
     light_model.rotate(180, 1, 0, 0);
-    ceil_light.draw(gl, shader, light_model);
+    ceil_light.set(light_model, buffer);
 
     var wall = new Array(5);
     for(var i = 0; i<5; i++)
@@ -506,11 +559,11 @@ function drawWorld(gl, shader){
     modelMatrix[4].setTranslate(0, -1, 0).rotate(-90, 1, 0, 0);
 
     for(var i = 0; i<5; i++){
-        wall[i].draw(gl, shader, modelMatrix[i]);
+        wall[i].set(modelMatrix[i], buffer);
     }
 }
 
-function drawLamp(gl, shader, modelMatrix, params){
+function setLamp(modelMatrix, params, buffer){
     var root = new HElement([0.0, 0.0, 0.0], new Box(base_material, base_color));
     root.setScale(base_scale[0], base_scale[1], base_scale[2]);
     var lowerArm = new HElement([0.0, -1.0, 0.0], new Box(lowerArm_material, lowerArm_color));
@@ -530,7 +583,7 @@ function drawLamp(gl, shader, modelMatrix, params){
 
     var obj = new HObject(root);
 
-    obj.draw(gl, shader, modelMatrix);
+    obj.set(modelMatrix, buffer);
 }
 
 function initArrayBuffer(gl, attribute, data, type, num) {
