@@ -1,4 +1,52 @@
 //proj3
+
+var lookPoint = [0, 0, 5];
+var centerPoint = [0, 0, 0];
+var cameraUpVector = [0, 1, 0];
+var cameraAngle = 30;
+var cameraNear = 1;
+var cameraFar = 100;
+
+var lampHeight = 0.05;
+var lampScale = [0.4, 0.4, 0.4];
+
+var ambientColor = [0.3, 0.3, 0.3];
+
+var ceilLight_diffuseColor = [1.0, 1.0, 1.0];
+var ceilLight_specularColor = [1.0, 1.0, 1.0];
+var ceilLight_cutoff = 180;
+var ceilLight_position = [0.0, 0.9, 0.0];
+
+var wall_material = new Array(5);
+var wall_color = new Array(5);
+
+wall_material[0] = [1.0, 1.0, 1.0, 10.0];
+wall_color[0] = [0.2, 0.4, 0.6];
+wall_material[1] = [1.0, 1.0, 1.0, 10.0];
+wall_color[1] = [0.2, 0.4, 0.6];
+wall_material[2] = [1.0, 1.0, 1.0, 10.0];
+wall_color[2] = [0.2, 0.4, 0.6];
+wall_material[3] = [1.0, 1.0, 1.0, 10.0];
+wall_color[3] = [0.2, 0.4, 0.6];
+wall_material[4] = [1.0, 1.0, 1.0, 10.0];
+wall_color[4] = [0.2, 0.4, 0.6];
+
+var base_material = [1.0, 1.0, 1.0, 10.0];
+var base_color = [0.2, 0.4, 0.6];
+var base_scale = [0.5, 0.1, 0.5];
+
+var lowerArm_material = [1.0, 1.0, 1.0, 10.0];
+var lowerArm_color = [0.2, 0.4, 0.6];
+var lowerArm_scale = [0.1, 0.1];
+
+var upperArm_material = [1.0, 1.0, 1.0, 10.0];
+var upperArm_color = [0.2, 0.4, 0.6];
+var upperArm_scale = [0.1, 0.1];
+
+var lampLight_diffuseColor = [1.0, 1.0, 1.0];
+var lampLight_specularColor = [1.0, 1.0, 1.0];
+
+
 function Shader(gl_context){
     this.gl = gl_context;
     this.InitShader = function (vertex, frag){
@@ -61,6 +109,7 @@ function Shader(gl_context){
     }
 
     this.SetLight= function (i, diffuseColor, specularColor, position, lookDirection, cutoffAngle){
+        console.log(i);
         this.gl.uniform3fv(this.u_diffuseColor[i], diffuseColor);
         this.gl.uniform3fv(this.u_specularColor[i], specularColor);
         this.gl.uniform3fv(this.u_position[i], position);
@@ -144,9 +193,8 @@ function Light(index, diffuseColor, specularColor, cutoff){
 
         var l_position = [position.elements[0], position.elements[1], position.elements[2]];
         var l_direction= [look_position.elements[0], look_position.elements[1], look_position.elements[2]];
-        console.log(l_position);
-        console.log(l_direction);
         shader.SetLight(this.index, this.diffuseColor, this.specularColor, l_position, l_direction, this.cutoff);
+        return true;
     }
 }
 
@@ -356,15 +404,15 @@ function HObject(root){
 
 function Parameters(){
     this.x = 0;
-    this.z = -50;
-    this.shoulder_1 = 30;
-    this.shoulder_2 = -30;
-    this.lower = 40;
-    this.elbow = -60;
-    this.upper = 40;
+    this.z = 0;
+    this.shoulder_1 = 0;
+    this.shoulder_2 = 0;
+    this.lower = 0;
+    this.elbow = 0;
+    this.upper = 0;
     this.head_1 = 0;
     this.head_2 = 0;
-    this.cutoff = 30;
+    this.cutoff = 0;
 }
 
 function main() {
@@ -391,15 +439,13 @@ function main() {
 
     // Set Camera
     var PMatrix = new Matrix4();
-    var lookPoint = [0, 0, 5];
-    var centerPoint = [0, 0, 0];
-    var cameraUpVector = [0, 1, 0];
-    PMatrix.setPerspective(30, canvas.width/canvas.height, 1, 100);
+    PMatrix.setPerspective(cameraAngle, canvas.width/canvas.height, cameraNear, cameraFar);
     shader.SetCamera(PMatrix, lookPoint, centerPoint, cameraUpVector);
 
     //Document values
     var params = new Parameters();
     setEvent(gl, shader, params);
+    console.log(params.cutoff);
 
     drawScene(gl, shader, params);
 }
@@ -421,6 +467,7 @@ function setParamsEvent(gl, shader, params, id){
     var range = document.getElementById(id);
     var value = document.getElementById(id + '-value');
     value.innerHTML = range.value;
+    params[id] = range.value;
     range.oninput = function(){ params[id] = range.value; value.innerHTML = range.value; drawScene(gl, shader, params); }
 }
 
@@ -428,8 +475,8 @@ function drawScene(gl, shader, params){
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     // Set Model
     var modelMatrix = new Matrix4();  // Model matrix
-    modelMatrix.setTranslate(params.x / 100, -0.95, params.z / 100); // Rotate around the y-axis
-    modelMatrix.scale(0.4, 0.4, 0.4);
+    modelMatrix.setTranslate(params.x / 100, -1 + lampHeight, params.z / 100); // Rotate around the y-axis
+    modelMatrix.scale(lampScale[0], lampScale[1], lampScale[2]);
 
     drawWorld(gl, shader);
     drawLamp(gl, shader, modelMatrix, params);
@@ -437,20 +484,17 @@ function drawScene(gl, shader, params){
 
 function drawWorld(gl, shader){
     // Set Lights
-    shader.SetAmbient(0.3, 0.3, 0.3);
+    shader.SetAmbient(ambientColor[0], ambientColor[1], ambientColor[2]);
 
-    var ceil_light = new Light(0, [1.0, 1.0, 1.0], [1.0, 1.0, 1.0], 180);
+    var ceil_light = new Light(0, ceilLight_diffuseColor, ceilLight_specularColor, ceilLight_cutoff);
     var light_model = new Matrix4();
-    light_model.setTranslate(0, 0.9, 0);
+    light_model.setTranslate(ceilLight_position[0], ceilLight_position[1], ceilLight_position[2]);
     light_model.rotate(180, 1, 0, 0);
     ceil_light.draw(gl, shader, light_model);
 
     var wall = new Array(5);
-    wall[0] = new Wall([1.0, 1.0, 1.0, 10.0], [0.4, 0.4, 0.7]);
-    wall[1] = new Wall([1.0, 1.0, 1.0, 10.0], [0.4, 0.4, 0.7]);
-    wall[2] = new Wall([1.0, 1.0, 1.0, 10.0], [0.4, 0.4, 0.7]);
-    wall[3] = new Wall([1.0, 1.0, 1.0, 10.0], [0.4, 0.4, 0.7]);
-    wall[4] = new Wall([1.0, 1.0, 1.0, 10.0], [0.4, 0.4, 0.7]);
+    for(var i = 0; i<5; i++)
+        wall[i] = new Wall(wall_material[i], wall_color[i]);
 
     var modelMatrix = new Array(5);
     for(var i = 0; i<5; i++)
@@ -467,21 +511,21 @@ function drawWorld(gl, shader){
 }
 
 function drawLamp(gl, shader, modelMatrix, params){
-    var root = new HElement([0.0, 0.0, 0.0], new Box([1.0, 1.0, 1.0, 10.0], [0.2, 0.5, 0.3]));
-    root.setScale(0.5, 0.1, 0.5);
-    var arm1 = new HElement([0.0, -1.0, 0.0], new Box([1.0, 1.0, 1.0, 10.0], [0.3, 0.3, 0.8]));
-    arm1.setScale(0.1, params.lower/100, 0.1);
-    arm1.setRotate((Number)(params.shoulder_1) - 90, 0, 0, 1).
+    var root = new HElement([0.0, 0.0, 0.0], new Box(base_material, base_color));
+    root.setScale(base_scale[0], base_scale[1], base_scale[2]);
+    var lowerArm = new HElement([0.0, -1.0, 0.0], new Box(lowerArm_material, lowerArm_color));
+    lowerArm.setScale(lowerArm_scale[0], params.lower/100, lowerArm_scale[1]);
+    lowerArm.setRotate((Number)(params.shoulder_1) - 90, 0, 0, 1).
         rotate(params.shoulder_2, 0, 1, 0);
-    root.pushChild(arm1, [0.0, 1.0, 0.0]);
-    var arm2 = new HElement([0.0, -1.0, 0.0], new Box([1.0, 1.0, 1.0, 10.0], [0.2, 0.3, 0.9]));
-    arm2.setScale(0.1, params.upper/100, 0.1);
-    arm2.setRotate(params.elbow, 1, 0, 0);
-    arm1.pushChild(arm2, [0.0, 1.0, 0.0]);
+    root.pushChild(lowerArm, [0.0, 1.0, 0.0]);
+    var upperArm = new HElement([0.0, -1.0, 0.0], new Box(upperArm_material, upperArm_color));
+    upperArm.setScale(upperArm_scale[0], params.upper/100, upperArm_scale[1]);
+    upperArm.setRotate(params.elbow, 1, 0, 0);
+    lowerArm.pushChild(upperArm, [0.0, 1.0, 0.0]);
     var lamp= new HElement([0.0, -1.0, 0.0], new Globe(80, [1.0, 1.0, 1.0, 10.0], [0.5, 0.3, 0.6]));
     lamp.setScale(0.2, 0.2, 0.2);
-    arm2.pushChild(lamp, [0.0, 1.0, 0.0]);
-    var lamp_light = new HElement([0.0, 0.0, 0.0], new Light(1, [1.0, 1.0, 1.0], [1.0, 1.0, 1.0], params.cutoff));
+    upperArm.pushChild(lamp, [0.0, 1.0, 0.0]);
+    var lamp_light = new HElement([0.0, 0.0, 0.0], new Light(1, lampLight_diffuseColor, lampLight_specularColor, params.cutoff));
     lamp.pushChild(lamp_light, [0.0, 1.0, 0.0]);
 
     var obj = new HObject(root);
