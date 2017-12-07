@@ -45,6 +45,13 @@ var upperArm_material = [1.0, 1.0, 1.0, 10.0];
 var upperArm_color = [0.2, 0.4, 0.6];
 var upperArm_scale = [0.1, 0.1];
 
+var lamp_material = [1.0, 1.0, 0.0, 10.0];
+var lamp_color = [0.2, 0.4, 0.6];
+var lamp_scale = [0.3, 0.3, 0.3];
+var lamp_slope = 1.8;
+
+var lamp_bulb_scale = [0.1, 0.1, 0.1];
+
 var lampLight_diffuseColor = [1.0, 1.0, 1.0];
 var lampLight_specularColor = [1.0, 1.0, 1.0];
 
@@ -223,6 +230,120 @@ function Light(index, diffuseColor, specularColor, cutoff){
         }
         shader.SetMaterial([1.0, 1.0, 1.0]);
         shader.SetLight(this.index, this.diffuseColor, this.specularColor, this.l_position, this.l_direction, this.cutoff);
+        return true;
+    }
+}
+
+function Lamp(div, lower_r, upper_r, material, color){
+    this.div = div;
+    this.lower_r = lower_r;
+    this.upper_r = upper_r;
+    this.material = material;
+    this.color = color;
+
+    this.modelMatrix;
+    this.setFlag = false;
+
+    this.vertices_circle;
+    this.vbuffer_circle;
+
+    this.vertices_side;
+    this.vbuffer_side;
+    this.nbuffer_side;
+
+    this.set = function(gl, modelMatrix, buffer){
+        this.modelMatrix = modelMatrix;
+        var angleStep = Math.PI * 2 / this.div;
+        var lower_circle = [];
+        var lamp_side= [];
+        var side_normal = [];
+
+        var angle = 0;
+
+        //tan theta = 2/(upper_r - lower_r)
+        //noraml tan = tan 90 - theta = -1 / tan theta
+        //normal vector = [normal cos, normal sin , 0] = [1, normal tan, 0] = [1, -1 / tan theta, 0] = [1, -(upper - lower)/2, 0]
+        var normalVector = new Vector4([1, -(upper_r - lower_r) / 2, 0, 1]);
+        var normalRotateM = new Matrix4();
+
+        for(var i = 0; i <= this.div; i++){
+            lower_circle.push(this.lower_r * Math.cos(angle));
+            lower_circle.push(-1.0);
+            lower_circle.push(this.lower_r * Math.sin(angle));
+
+            lamp_side.push(this.lower_r * Math.cos(angle));
+            lamp_side.push(-1.0);
+            lamp_side.push(this.lower_r * Math.sin(angle));
+
+            lamp_side.push(this.upper_r * Math.cos(angle));
+            lamp_side.push(1.0);
+            lamp_side.push(this.upper_r * Math.sin(angle));
+
+            normalRotateM.setRotate(angle * 180 / Math.PI, 0, -1, 0);
+            var vec = normalRotateM.multiplyVector4(normalVector);
+            side_normal.push(vec.elements[0]);
+            side_normal.push(vec.elements[1]);
+            side_normal.push(vec.elements[2]);
+            side_normal.push(vec.elements[0]);
+            side_normal.push(vec.elements[1]);
+            side_normal.push(vec.elements[2]);
+            angle += angleStep;
+        }
+
+        this.vertices_circle = new Float32Array(lower_circle);
+
+        this.vbuffer_circle = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.vbuffer_circle);
+        gl.bufferData(gl.ARRAY_BUFFER, this.vertices_circle, gl.STATIC_DRAW);
+
+        this.vertices_side = new Float32Array(lamp_side);
+
+        this.vbuffer_side = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.vbuffer_side);
+        gl.bufferData(gl.ARRAY_BUFFER, this.vertices_side, gl.STATIC_DRAW);
+
+        var normal = new Float32Array(side_normal);
+
+        this.nbuffer_side = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.nbuffer_side);
+        gl.bufferData(gl.ARRAY_BUFFER, normal, gl.STATIC_DRAW);
+
+        this.setFlag = true;
+        buffer.object.push(this);
+        return true;
+    }
+
+    this.draw = function(gl, shader){
+        if(!this.setFlag){
+            console.log('Lamp is not set');
+            return false;
+        }
+
+        shader.SetMaterial(this.material[0], this.material[1], this.material[2], this.material[3]);
+        shader.SetModel(this.modelMatrix);
+        var a_Color = gl.getAttribLocation(gl.program, 'a_Color');
+        gl.vertexAttrib3fv(a_Color, this.color);
+
+        var a_Position = initAttrib(gl, this.vbuffer_circle, 'a_Position', gl.FLOAT, 3);
+        var a_Normal = gl.getAttribLocation(gl.program, 'a_Normal');
+        gl.vertexAttrib3f(a_Normal, 0.0, -1.0, 0.0);
+        gl.drawArrays(gl.TRIANGLE_FAN, 0, this.div);
+
+        // Deallocate vertex attribute
+        gl.disableVertexAttribArray(a_Position);
+        gl.disableVertexAttribArray(a_Normal);
+        gl.disableVertexAttribArray(a_Color);
+
+        a_Position = initAttrib(gl, this.vbuffer_side, 'a_Position', gl.FLOAT, 3);
+        a_Normal = initAttrib(gl, this.nbuffer_side, 'a_Normal', gl.FLOAT, 3);
+
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, (this.div + 1) * 2);
+
+        // Deallocate vertex attribute
+        gl.disableVertexAttribArray(a_Position);
+        gl.disableVertexAttribArray(a_Normal);
+        gl.disableVertexAttribArray(a_Color);
+
         return true;
     }
 }
@@ -608,9 +729,14 @@ function setLamp(gl, modelMatrix, params, buffer){
     upperArm.setScale(upperArm_scale[0], params.upper/100, upperArm_scale[1]);
     upperArm.setRotate(params.elbow, 1, 0, 0);
     lowerArm.pushChild(upperArm, [0.0, 1.0, 0.0]);
-    var lamp= new HElement([0.0, -1.0, 0.0], new Globe(80, [1.0, 1.0, 1.0, 10.0], [0.5, 0.3, 0.6]));
-    lamp.setScale(0.2, 0.2, 0.2);
+    var lamp= new HElement([0.0, -1.0, 0.0], new Lamp(80, 1, lamp_slope, lamp_material, lamp_color));
+    lamp.setScale(lamp_scale[0], lamp_scale[1], lamp_scale[2]);
+    lamp.setRotate(params.head_1 - 90, 1, 0, 0).
+        rotate(params.head_2 - 90, 0, 0, 1);
     upperArm.pushChild(lamp, [0.0, 1.0, 0.0]);
+    var lamp_bulb = new HElement([0.0, -1.0, 0.0], new Globe(80, [100.0, 1.0, 1.0, 10.0], [1.0, 1.0, 1.0]));
+    lamp_bulb.setScale(lamp_bulb_scale[0], lamp_bulb_scale[1], lamp_bulb_scale[2]);
+    lamp.pushChild(lamp_bulb, [0.0, -1.0, 0.0]);
     var lamp_light = new HElement([0.0, 0.0, 0.0], new Light(1, lampLight_diffuseColor, lampLight_specularColor, params.cutoff));
     lamp.pushChild(lamp_light, [0.0, 1.0, 0.0]);
 
