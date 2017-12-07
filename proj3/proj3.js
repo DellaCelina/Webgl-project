@@ -743,7 +743,7 @@ function setLamp(gl, modelMatrix, params, buffer){
     // lamp's lower arm, connected from base, to upper arm
     var lowerArm = new HElement([0.0, -1.0, 0.0], new Box(lowerArm_material, lowerArm_color));
     lowerArm.setScale(lowerArm_scale[0], params.lower/100, lowerArm_scale[1]);
-    lowerArm.setRotate((Number)(params.shoulder_1) - 90, 0, 0, 1).
+    lowerArm.setRotate(Number(params.shoulder_1) - 90, -Math.cos(Number(params.shoulder_2) * Math.PI / 180), 0, Math.sin(Number(params.shoulder_2) * Math.PI / 180)).
         rotate(params.shoulder_2, 0, 1, 0);
     root.pushChild(lowerArm, [0.0, 1.0, 0.0]);
 
