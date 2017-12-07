@@ -1,14 +1,14 @@
-//proj3
+//2012920033 안덕현 컴퓨터 그래픽스 proj3
 
-var lookPoint = [0, 0, 5];
+// Global Params
+var lookPoint = [0, 0, 3];
 var centerPoint = [0, 0, 0];
 var cameraUpVector = [0, 1, 0];
-var cameraAngle = 30;
+var cameraAngle = 60;
 var cameraNear = 1;
-var cameraFar = 100;
+var cameraFar = 5;
 
-var lampHeight = 0.05;
-var lampScale = [0.4, 0.4, 0.4];
+var lampScale = [0.45, 0.45, 0.45];
 
 var ambientColor = [0.3, 0.3, 0.3];
 
@@ -37,6 +37,8 @@ var base_material = [1.0, 1.0, 1.0, 10.0];
 var base_color = [0.2, 0.4, 0.6];
 var base_scale = [0.5, 0.1, 0.5];
 
+var lampHeight = base_scale[1] * lampScale[1];
+
 var lowerArm_material = [1.0, 1.0, 1.0, 10.0];
 var lowerArm_color = [0.2, 0.4, 0.6];
 var lowerArm_scale = [0.1, 0.1];
@@ -55,12 +57,13 @@ var lamp_bulb_scale = [0.2, 0.2, 0.2];
 var lampLight_diffuseColor = [1.0, 1.0, 1.0];
 var lampLight_specularColor = [1.0, 1.0, 1.0];
 
-
+//Class for set uniform variables in shader.
 function Shader(gl_context){
     this.gl = gl_context;
     this.InitShader = function (vertex, frag){
         if (!initShaders(this.gl, vertex, frag)) 
             console.log('Failed to intialize shaders.');
+
         // Get camera uniforms
         this.u_VPMatrix = this.gl.getUniformLocation(this.gl.program, 'u_VPMatrix');
         this.u_ViewPosition = this.gl.getUniformLocation(this.gl.program, 'u_ViewPosition');
@@ -139,6 +142,7 @@ function Shader(gl_context){
 
 }
 
+// Buffer for drawing
 function DrawBuffer(){
     this.object = [];
     this.light = [];
@@ -152,9 +156,7 @@ function DrawBuffer(){
     }
 }
 
-// When Call Draw with Stack that have matrix finished calibration,
-// it multiplies own matrix and use it for draw obj,
-// then it calls child's draw function with stack.
+// Element for Hierarchical Object that has Joint Coordinates.
 function HElement(toParent, drawableObj){
     this.toParent = toParent;
     this.Obj = drawableObj;
@@ -181,15 +183,19 @@ function HElement(toParent, drawableObj){
             mat.setTranslate(joint[0] * scale[0], joint[1] * scale[1], joint[2] * scale[2]);
         return mat;
     }
+
+    // Set to draw buffer
     this.set= function(gl, stack, buffer){
         stack.setTop(stack.top()
         .multiply(this.rotate)
         .multiply(this.getTranslate(this.scale, this.toParent, -1)));
     
+        // Scale after stack
         if(!this.Obj.set(gl, stack.top()
         .scale(this.scale[0], this.scale[1], this.scale[2]), buffer))
         console.log('Fail to draw Obj');
 
+        // Set Child's objects
         for(var i = 0; i<this.childCnt; i++){
             stack.push(stack.top().multiply(this.getTranslate(this.scale, this.childs[i].toChild, 1)));
             this.childs[i].Child.set(gl, stack, buffer);
@@ -198,6 +204,11 @@ function HElement(toParent, drawableObj){
         return true;
     }
 }
+
+// All Drawable objects; Light, Box, Globe, Wall, Lamp
+// each objects have set, draw function
+// in set function, they are pushed into draw buffer
+// in draw function, which is called in buffer's draw, they use own buffer and draw itself
 
 function Light(index, diffuseColor, specularColor, cutoff){
     this.index = index;
@@ -416,7 +427,6 @@ function Box(material, color){
         shader.SetMaterial(this.material[0], this.material[1], this.material[2], this.material[3]);
         shader.SetModel(this.modelMatrix);
 
-        // Draw Cube
         gl.drawElements(gl.TRIANGLES, this.indices.length, gl.UNSIGNED_BYTE, 0);
 
         // Deallocate vertex attribute
@@ -565,7 +575,6 @@ function Globe(div, material, color){
         shader.SetMaterial(this.material[0], this.material[1], this.material[2], this.material[3]);
         shader.SetModel(this.modelMatrix);
 
-        // Draw the cube
         gl.drawElements(gl.TRIANGLES, this.indices.length, gl.UNSIGNED_SHORT, 0);
 
         gl.disableVertexAttribArray(a_Position);
@@ -576,6 +585,7 @@ function Globe(div, material, color){
     }
 } 
 
+// Hierarcical Object, set root of HElements to draw buffer
 function HObject(root){
     this.root = root;
     this.modelMatrix;
@@ -600,6 +610,7 @@ function HObject(root){
     }
 }
 
+// Slider bar's parameters
 function Parameters(){
     this.x = 0;
     this.z = 0;
@@ -624,6 +635,7 @@ function main() {
     return;
     }
 
+    // Init Shader with sources
     var shader = new Shader(gl);
     // Get shader code
     var vertex_src = document.getElementById('vertex-shader').text;
@@ -634,13 +646,12 @@ function main() {
     gl.clearColor(0.0, 0.0, 0.0, 1.0);
     gl.enable(gl.DEPTH_TEST);
 
-
     // Set Camera
     var PMatrix = new Matrix4();
     PMatrix.setPerspective(cameraAngle, canvas.width/canvas.height, cameraNear, cameraFar);
     shader.SetCamera(PMatrix, lookPoint, centerPoint, cameraUpVector);
 
-    //Document values
+    // Set slider events
     var params = new Parameters();
     setEvent(gl, shader, params);
 
@@ -672,33 +683,38 @@ function drawScene(gl, shader, params){
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
     var buffer = new DrawBuffer();
-    // Set Model
-    var modelMatrix = new Matrix4();  // Model matrix
-    modelMatrix.setTranslate(params.x / 100, -1 + lampHeight, params.z / 100); // Rotate around the y-axis
-    modelMatrix.scale(lampScale[0], lampScale[1], lampScale[2]);
 
     setWorld(gl, shader, buffer);
+
+    // Set Lamp's model
+    var modelMatrix = new Matrix4();
+    modelMatrix.setTranslate(params.x / 100, -1 + lampHeight, params.z / 100);
+    modelMatrix.scale(lampScale[0], lampScale[1], lampScale[2]);
     setLamp(gl, modelMatrix, params, buffer);
 
+    // Draw light first and object second
     buffer.draw(gl, shader);
 }
 
 function setWorld(gl, shader, buffer){
-    // Set Lights
+    // Set ambient light
     shader.SetAmbient(ambientColor[0], ambientColor[1], ambientColor[2]);
 
+    // Set ceil light
     var ceil_light = new Light(0, ceilLight_diffuseColor, ceilLight_specularColor, ceilLight_cutoff);
     var light_model = new Matrix4();
     light_model.setTranslate(ceilLight_position[0], ceilLight_position[1], ceilLight_position[2]);
     light_model.rotate(180, 1, 0, 0);
     ceil_light.set(gl, light_model, buffer);
 
+    // Set ceil light bulb
     var ceil_lamp = new Globe(80, [100, 1, 1, 10.0], [1.0, 1.0, 1.0]);
     var lamp_model = new Matrix4();
     lamp_model.setTranslate(ceilLight_position[0], ceilLight_position[1], ceilLight_position[2]);
     lamp_model.scale(ceilLamp_scale[0], ceilLamp_scale[1], ceilLamp_scale[2]);
     ceil_lamp.set(gl, lamp_model, buffer);
 
+    // Set walls
     var wall = new Array(5);
     for(var i = 0; i<5; i++)
         wall[i] = new Wall(wall_material[i], wall_color[i]);
@@ -718,56 +734,48 @@ function setWorld(gl, shader, buffer){
 }
 
 function setLamp(gl, modelMatrix, params, buffer){
+    // set hierarchical object 
+
+    // lamp's base, connected to lower arm
     var root = new HElement([0.0, 0.0, 0.0], new Box(base_material, base_color));
     root.setScale(base_scale[0], base_scale[1], base_scale[2]);
+
+    // lamp's lower arm, connected from base, to upper arm
     var lowerArm = new HElement([0.0, -1.0, 0.0], new Box(lowerArm_material, lowerArm_color));
     lowerArm.setScale(lowerArm_scale[0], params.lower/100, lowerArm_scale[1]);
     lowerArm.setRotate((Number)(params.shoulder_1) - 90, 0, 0, 1).
         rotate(params.shoulder_2, 0, 1, 0);
     root.pushChild(lowerArm, [0.0, 1.0, 0.0]);
+
+    // lamp's upper arm, conneted from lower arm, to lamp
     var upperArm = new HElement([0.0, -1.0, 0.0], new Box(upperArm_material, upperArm_color));
     upperArm.setScale(upperArm_scale[0], params.upper/100, upperArm_scale[1]);
     upperArm.setRotate(params.elbow, 1, 0, 0);
     lowerArm.pushChild(upperArm, [0.0, 1.0, 0.0]);
+
+    // lamp's lamp, connected from upper arm, it has light bulb
     var lamp= new HElement([0.0, -1.0, 0.0], new Lamp(80, 1, lamp_slope, lamp_material, lamp_color));
     lamp.setScale(lamp_scale[0], lamp_scale[1], lamp_scale[2]);
     lamp.setRotate(Number(params.head_1) - 90, 0, -Math.sin(Number(params.head_2) * Math.PI / 180), Math.cos(Number(params.head_2) * Math.PI / 180)).
         rotate(params.head_2, 1, 0, 0);
     upperArm.pushChild(lamp, [0.0, 1.0, 0.0]);
+
+    // lamp's light bulb for present light of lamp
     var lamp_bulb = new HElement([0.0, -1.0, 0.0], new Globe(80, [100.0, 1.0, 1.0, 10.0], [1.0, 1.0, 1.0]));
     lamp_bulb.setScale(lamp_bulb_scale[0], lamp_bulb_scale[1], lamp_bulb_scale[2]);
     lamp.pushChild(lamp_bulb, [0.0, -1.0, 0.0]);
+
+    // lamp's light
     var lamp_light = new HElement([0.0, 0.0, 0.0], new Light(1, lampLight_diffuseColor, lampLight_specularColor, params.cutoff));
     lamp.pushChild(lamp_light, [0.0, 1.0, 0.0]);
 
+    // push root into hierarchical object
     var obj = new HObject(root);
 
     obj.set(gl, modelMatrix, buffer);
 }
 
-function initArrayBuffer(gl, attribute, data, type, num) {
-    // Create a buffer object
-    var buffer = gl.createBuffer();
-    if (!buffer) {
-        console.log('Failed to create the buffer object');
-        return -1;
-    }
-    // Write date into the buffer object
-    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-    gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
-    // Assign the buffer object to the attribute variable
-    var a_attribute = gl.getAttribLocation(gl.program, attribute);
-    if (a_attribute < 0) {
-        console.log('Failed to get the storage location of ' + attribute);
-        return -1;
-    }
-    gl.vertexAttribPointer(a_attribute, num, type, false, 0, 0);
-    // Enable the assignment of the buffer object to the attribute variable
-    gl.enableVertexAttribArray(a_attribute);
-
-    return a_attribute;
-}
-
+// Function for Elements that set buffers to attribute of shader
 function initAttrib(gl, buffer, attribute, type, num){
     var a_attribute = gl.getAttribLocation(gl.program, attribute);
     if (a_attribute < 0) {
