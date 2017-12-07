@@ -45,12 +45,12 @@ var upperArm_material = [1.0, 1.0, 1.0, 10.0];
 var upperArm_color = [0.2, 0.4, 0.6];
 var upperArm_scale = [0.1, 0.1];
 
-var lamp_material = [1.0, 1.0, 0.0, 10.0];
+var lamp_material = [1.0, 1.0, 1.0, 10.0];
 var lamp_color = [0.2, 0.4, 0.6];
 var lamp_scale = [0.3, 0.3, 0.3];
 var lamp_slope = 1.8;
 
-var lamp_bulb_scale = [0.1, 0.1, 0.1];
+var lamp_bulb_scale = [0.2, 0.2, 0.2];
 
 var lampLight_diffuseColor = [1.0, 1.0, 1.0];
 var lampLight_specularColor = [1.0, 1.0, 1.0];
@@ -731,8 +731,8 @@ function setLamp(gl, modelMatrix, params, buffer){
     lowerArm.pushChild(upperArm, [0.0, 1.0, 0.0]);
     var lamp= new HElement([0.0, -1.0, 0.0], new Lamp(80, 1, lamp_slope, lamp_material, lamp_color));
     lamp.setScale(lamp_scale[0], lamp_scale[1], lamp_scale[2]);
-    lamp.setRotate(params.head_1 - 90, 1, 0, 0).
-        rotate(params.head_2 - 90, 0, 0, 1);
+    lamp.setRotate(Number(params.head_1) - 90, 0, -Math.sin(Number(params.head_2) * Math.PI / 180), Math.cos(Number(params.head_2) * Math.PI / 180)).
+        rotate(params.head_2, 1, 0, 0);
     upperArm.pushChild(lamp, [0.0, 1.0, 0.0]);
     var lamp_bulb = new HElement([0.0, -1.0, 0.0], new Globe(80, [100.0, 1.0, 1.0, 10.0], [1.0, 1.0, 1.0]));
     lamp_bulb.setScale(lamp_bulb_scale[0], lamp_bulb_scale[1], lamp_bulb_scale[2]);
