@@ -22,33 +22,35 @@ var ceilLamp_scale = [0.1, 0.1, 0.1];
 var wall_material = new Array(5);
 var wall_color = new Array(5);
 
-wall_material[0] = [1.0, 1.0, 1.0, 10.0];
-wall_color[0] = [0.2, 0.4, 0.6];
-wall_material[1] = [1.0, 1.0, 1.0, 10.0];
-wall_color[1] = [0.2, 0.4, 0.6];
-wall_material[2] = [1.0, 1.0, 1.0, 10.0];
-wall_color[2] = [0.2, 0.4, 0.6];
-wall_material[3] = [1.0, 1.0, 1.0, 10.0];
-wall_color[3] = [0.2, 0.4, 0.6];
-wall_material[4] = [1.0, 1.0, 1.0, 10.0];
-wall_color[4] = [0.2, 0.4, 0.6];
+var shininess_max = 100.0;
 
-var base_material = [1.0, 1.0, 1.0, 10.0];
-var base_color = [0.2, 0.4, 0.6];
-var base_scale = [0.5, 0.1, 0.5];
+wall_material[0] = [Math.random(), Math.random(), Math.random(), Math.random() * shininess_max];
+wall_color[0] = [Math.random(), Math.random(), Math.random()];
+wall_material[1] = [Math.random(), Math.random(), Math.random(), Math.random() * shininess_max];
+wall_color[1] = [Math.random(), Math.random(), Math.random()];
+wall_material[2] = [Math.random(), Math.random(), Math.random(), Math.random() * shininess_max];
+wall_color[2] = [Math.random(), Math.random(), Math.random()];
+wall_material[3] = [Math.random(), Math.random(), Math.random(), Math.random() * shininess_max];
+wall_color[3] = [Math.random(), Math.random(), Math.random()];
+wall_material[4] = [Math.random(), Math.random(), Math.random(), Math.random() * shininess_max];
+wall_color[4] = [Math.random(), Math.random(), Math.random()];
+
+var base_material = [Math.random(), Math.random(), Math.random(), Math.random() * shininess_max];
+var base_color = [Math.random(), Math.random(), Math.random()];
+var base_scale = [0.7, 0.5, 0.7];
 
 var lampHeight = base_scale[1] * lampScale[1];
 
-var lowerArm_material = [1.0, 1.0, 1.0, 10.0];
-var lowerArm_color = [0.2, 0.4, 0.6];
+var lowerArm_material = [Math.random(), Math.random(), Math.random(), Math.random() * shininess_max];
+var lowerArm_color = [Math.random(), Math.random(), Math.random()];
 var lowerArm_scale = [0.1, 0.1];
 
-var upperArm_material = [1.0, 1.0, 1.0, 10.0];
-var upperArm_color = [0.2, 0.4, 0.6];
+var upperArm_material = [Math.random(), Math.random(), Math.random(), Math.random() * shininess_max];
+var upperArm_color = [Math.random(), Math.random(), Math.random()];
 var upperArm_scale = [0.1, 0.1];
 
-var lamp_material = [1.0, 1.0, 1.0, 10.0];
-var lamp_color = [0.2, 0.4, 0.6];
+var lamp_material = [Math.random(), Math.random(), Math.random(), Math.random() * shininess_max];
+var lamp_color = [Math.random(), Math.random(), Math.random()];
 var lamp_scale = [0.3, 0.3, 0.3];
 var lamp_slope = 1.8;
 
@@ -743,7 +745,8 @@ function setLamp(gl, modelMatrix, params, buffer){
     // lamp's lower arm, connected from base, to upper arm
     var lowerArm = new HElement([0.0, -1.0, 0.0], new Box(lowerArm_material, lowerArm_color));
     lowerArm.setScale(lowerArm_scale[0], params.lower/100, lowerArm_scale[1]);
-    lowerArm.setRotate((Number)(params.shoulder_1) - 90, 0, 0, 1).
+    //lowerArm.setRotate((Number)(params.shoulder_1) - 90, 0, 0, 1).
+    lowerArm.setRotate(Number(params.shoulder_1) - 90, -Math.cos(Number(params.shoulder_2) * Math.PI / 180), 0, Math.sin(Number(params.shoulder_2) * Math.PI / 180)).
         rotate(params.shoulder_2, 0, 1, 0);
     root.pushChild(lowerArm, [0.0, 1.0, 0.0]);
 
